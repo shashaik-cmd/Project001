@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Assistive AI</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .section {
+            height: 33.33vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.2s ease;
+        }
+
+        .section:active {
+            transform: scale(0.97);
+        }
+
+        #object {
+            background: #16a085;
+        }
+
+        #currency {
+            background: #2980b9;
+        }
+
+        #navigation {
+            background: #8e44ad;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="object" class="section" onclick="goToObject()">
+    Object Detection
+</div>
+
+<div id="currency" class="section" onclick="goToCurrency()">
+    Currency Detection
+</div>
+
+<div id="navigation" class="section" onclick="startNavigation()">
+    Navigation
+</div>
+
+<script>
+/* ================= VOICE ENGINE ================= */
+
+function speak(text) {
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.rate = 1;
+    speech.pitch = 1;
+    window.speechSynthesis.cancel(); // stop overlapping
+    window.speechSynthesis.speak(speech);
+}
+
+/* =============== WELCOME MESSAGE ================= */
+
+window.onload = () => {
+    speak("Welcome. Tap top for object detection. Tap middle for currency detection. Tap bottom for navigation.");
+};
+
+/* =============== NAVIGATION HANDLERS ============== */
+
+function goToObject() {
+    speak("Opening object detection");
+    setTimeout(() => {
+        window.location.href = "/object";
+    }, 1000);
+}
+
+function goToCurrency() {
+    speak("Opening currency detection");
+    setTimeout(() => {
+        window.location.href = "/currency";
+    }, 1000);
+}
+
+/* =============== VOICE NAVIGATION ================= */
+
+function startNavigation() {
+    speak("Please say your destination");
+
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+    recognition.lang = "en-IN";
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        let place = event.results[0][0].transcript;
+
+        speak("Navigating to " + place);
+
+        setTimeout(() => {
+            window.location.href =
+                `https://www.google.com/maps/dir/?api=1&destination=${place}&travelmode=walking`;
+        }, 1500);
+    };
+
+    recognition.onerror = function() {
+        speak("Sorry, I could not understand. Please try again.");
+    };
+}
+
+/* =============== KEYBOARD ACCESSIBILITY ============ */
+/* (Important for accessibility testing) */
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "1") goToObject();
+    if (e.key === "2") goToCurrency();
+    if (e.key === "3") startNavigation();
+});
+</script>
+
+</body>
+</html>

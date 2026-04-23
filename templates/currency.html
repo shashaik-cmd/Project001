@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Currency Detection</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+        }
+
+        .section {
+            height: 50vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: white;
+            cursor: pointer;
+        }
+
+        #imageMode { background: #2ecc71; }
+        #liveMode { background: #e67e22; }
+
+        #previewContainer {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        img {
+            max-width: 90%;
+            border: 3px solid black;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- MODE SELECTION -->
+<div id="imageMode" class="section" onclick="selectImageMode()">
+    Detect via Image
+</div>
+
+<div id="liveMode" class="section" onclick="goLive()">
+    Detect Live
+</div>
+
+<!-- IMAGE MODE UI -->
+<div id="previewContainer">
+    <h2>Upload Currency Image</h2>
+    <input type="file" id="fileInput" accept="image/*">
+    <br><br>
+    <button onclick="processImage()">Detect Currency</button>
+
+    <h3>Preview</h3>
+    <img id="previewImg">
+
+    <h3>Result</h3>
+    <img id="resultImg">
+</div>
+
+<script>
+function speak(text) {
+    const speech = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(speech);
+}
+
+/* ================= MODE HANDLING ================= */
+
+function selectImageMode() {
+    document.getElementById("imageMode").style.display = "none";
+    document.getElementById("liveMode").style.display = "none";
+    document.getElementById("previewContainer").style.display = "block";
+
+    speak("Please upload an image");
+}
+
+function goLive() {
+    window.location.href = "/currency_live";
+}
+
+/* ================= IMAGE PREVIEW ================= */
+
+document.getElementById("fileInput").addEventListener("change", function(event) {
+    const file = event.target.files[0];
+
+    if (file) {
+        const url = URL.createObjectURL(file);
+        document.getElementById("previewImg").src = url;
+    }
+});
+
+/* ================= DETECTION ================= */
+
+async function processImage() {
+    const file = document.getElementById("fileInput").files[0];
+
+    if (!file) {
+        speak("Please upload an image first");
+        return;
+    }
+
+    speak("Detecting currency");
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const res = await fetch("/detect_currency_image", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+
+    document.getElementById("resultImg").src =
+        "data:image/jpeg;base64," + data.image;
+
+    if (data.labels.length > 0) {
+        let speechText = data.labels.map(l => l + " rupees").join(", ");
+        speak(speechText);
+    } else {
+        speak("No currency detected");
+    }
+}
+</script>
+
+</body>
+</html>

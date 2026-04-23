@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Navigation</title>
+</head>
+
+<body>
+
+<button onclick="startNavigation()">Start Navigation</button>
+
+<p id="debugText" style="position:absolute; top:80px; left:20px; color:white; font-size:20px;"></p>
+<script>
+function speak(text) {
+    const speech = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(speech);
+}
+
+function startNavigation() {
+    speak("Where do you want to go?");
+    setTimeout(startListening, 2000);
+}
+
+function startListening() {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+    recognition.lang = "en-IN";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        let transcript = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+        }
+
+        const result = event.results[0][0];  // 👈 ADD HERE
+
+        // ✅ CONFIDENCE CHECK
+        if (result.confidence < 0.6) {
+            console.log("Low confidence:", result.confidence);
+            speak("Not clear. Please repeat.");
+            startListening();
+            return;
+        }
+
+        console.log("LIVE:", transcript);
+        document.getElementById("debugText").innerText = "Heard: " + transcript;
+
+        // ✅ FINAL RESULT ONLY
+        if (event.results[0].isFinal) {
+            console.log("FINAL:", transcript);
+            confirmPlace(transcript.trim());
+        }
+    };
+
+    recognition.onerror = function(event) {
+        console.log("ERROR:", event.error);
+        retryListening();
+    };
+}
+
+function cleanPlace(text) {
+    text = text.toLowerCase();
+
+    // Common corrections
+    text = text.replace("beech", "beach");
+    text = text.replace("marine", "marina");
+
+    return text;
+}
+
+function confirmPlace(place) {
+    speak("Did you say " + place + "? Say yes or no.");
+
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        const answer = event.results[0][0].transcript.toLowerCase();
+
+        if (answer.includes("yes")) {
+            openMaps(place);
+        } else {
+            speak("Please say the destination again.");
+            setTimeout(startListening, 2000);
+        }
+    };
+}
+
+function openMaps(place) {
+    speak("Opening navigation to " + place);
+
+    navigator.geolocation.getCurrentPosition(position => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${lat},${lon}&destination=${encodeURIComponent(place)}&travelmode=walking`;
+
+        window.location.href = url;
+    }, () => {
+        // fallback if location denied
+        const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place)}&travelmode=walking`;
+        window.location.href = url;
+    });
+}
+</script>
+
+</body>
+</html>

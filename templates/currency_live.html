@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Currency Detection</title>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        video, canvas {
+            position: absolute;
+            width: 100vw;
+            height: 100vh;
+            object-fit: contain;
+        }
+
+        canvas {
+            z-index: 2;
+        }
+
+        .upload {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 3;
+        }
+    </style>
+</head>
+
+<body>
+
+
+
+<video id="video" autoplay></video>
+<canvas id="canvas"></canvas>
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+/* ========= VOICE ========= */
+
+function speak(text) {
+    const speech = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(speech);
+}
+
+/* ========= CAMERA ========= */
+
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => {
+    video.srcObject = stream;
+    speak("Currency detection started");
+    startDetection();
+})
+.catch(() => speak("Camera access denied"));
+
+/* ========= LIVE DETECTION ========= */
+
+let lastSpoken = "";
+
+function startDetection() {
+    setInterval(async () => {
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        ctx.drawImage(video, 0, 0);
+
+        const blob = await new Promise(resolve =>
+            canvas.toBlob(resolve, "image/jpeg")
+        );
+
+        sendToBackend(blob);
+
+    }, 2000);
+}
+
+/* ========= UPLOAD DETECTION ========= */
+
+async function uploadImage() {
+    const file = document.getElementById("fileInput").files[0];
+
+    if (!file) {
+        speak("Please upload an image");
+        return;
+    }
+
+    sendToBackend(file);
+}
+
+/* ========= COMMON FUNCTION ========= */
+
+async function sendToBackend(blob) {
+    const formData = new FormData();
+    formData.append("image", blob);
+
+    const res = await fetch("/detect_currency", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0);
+
+    let detected = [];
+
+    data.detections.forEach(det => {
+        const scaleX = canvas.width / video.videoWidth;
+        const scaleY = canvas.height / video.videoHeight;
+
+        const [x1, y1, x2, y2] = det.box;
+
+        const newX1 = x1 * scaleX;
+        const newY1 = y1 * scaleY;
+        const newX2 = x2 * scaleX;
+        const newY2 = y2 * scaleY;
+        const label = det.label;
+
+        detected.push(label);
+
+        ctx.strokeStyle = "yellow";
+        ctx.lineWidth = 3;
+        
+        ctx.strokeRect(newX1, newY1, newX2 - newX1, newY2 - newY1);
+
+
+        ctx.fillStyle = "yellow";
+        ctx.fillText(label, newX1, newY1 - 5);
+    });
+
+    detected = [...new Set(detected)];
+
+    if (detected.length > 0) {
+        let sentence = detected.join(", ") + " detected";
+
+        if (sentence !== lastSpoken) {
+            speak(sentence);
+            lastSpoken = sentence;
+        }
+    }
+}
+</script>
+
+</body>
+</html>

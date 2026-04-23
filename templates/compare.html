@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Model Comparison</title>
+
+    <style>
+    body {
+        margin: 0;
+        font-family: Arial;
+        text-align: center;
+        background: #111;
+        color: white;
+    }
+
+    h2 {
+        margin-top: 20px;
+    }
+
+    .controls {
+        margin: 20px;
+    }
+
+    .container {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px;
+        height: 75vh;
+    }
+
+    .box {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .box h3 {
+        margin-bottom: 10px;
+    }
+
+    .box img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        border: 3px solid white;
+        border-radius: 10px;
+        background: black;
+    }
+</style>
+</head>
+
+<body>
+
+<h2>Compare Models</h2>
+
+<input type="file" id="imageInput" accept="image/*">
+<br><br>
+
+<button id="compareBtn">Run Comparison</button>
+
+<div class="container">
+    <div class="box">
+        <h3>YOLOv5</h3>
+        <img id="img_v5">
+    </div>
+
+    <div class="box">
+        <h3>YOLOv8</h3>
+        <img id="img_v8">
+    </div>
+
+    <div class="box">
+        <h3>YOLOv11</h3>
+        <img id="img_v11">
+    </div>
+</div>
+
+<script>
+function speak(text) {
+    const speech = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(speech);
+}
+
+document.getElementById("compareBtn").addEventListener("click", async () => {
+    const fileInput = document.getElementById("imageInput");
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert("Please upload an image first");
+        speak("Please upload an image");
+        return;
+    }
+
+    console.log("Uploading image...");
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+        const res = await fetch("/compare_models", {
+            method: "POST",
+            body: formData
+        });
+
+        console.log("Response received");
+
+        if (!res.ok) {
+            const err = await res.text();
+            alert("Error: " + err);
+            speak("Error occurred");
+            return;
+        }
+
+        const data = await res.json();
+
+        console.log("Data:", data);
+
+        document.getElementById("img_v5").src = "data:image/jpeg;base64," + data.v5;
+        document.getElementById("img_v8").src = "data:image/jpeg;base64," + data.v8;
+        document.getElementById("img_v11").src = "data:image/jpeg;base64," + data.v11;
+
+        speak("Comparison complete");
+
+    } catch (error) {
+        console.error("Fetch error:", error);
+        alert("Something went wrong");
+    }
+});
+</script>
+
+</body>
+</html>
